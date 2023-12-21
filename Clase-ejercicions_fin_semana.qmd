@@ -1,0 +1,165 @@
+---
+title: "Ejercicios_fin_semana"
+format: html
+editor: visual
+---
+
+
+### Ejemplo probabilidad COVID
+
+Supongamos que tenemos una población donde 5 de cada 1000 personas están infectadas.
+
+
+Pintar una curva donde se represente en el eje Y la probabilidad de encontrar **al menos un contagiado** en función del número de personas dado por el eje X
+
+```{r}
+p=5/1000
+x<- 1:1000
+
+prb <- 1-(1-p)^x
+prb <- 1-dbinom(x=0,size=x,prob=p)
+plot(x,prb,xlab="Numero personas",ylab="Probabilidad")
+```
+
+Pintar una curva donde se represente en el eje Y la probabilidad de encontrar **exactamente dos contagiados** en función del número de personas dado por el eje X
+
+```{r}
+prb <- dbinom(x=2, size=x, prob=p)
+plot(x,prb)
+```
+
+Pintar una curva donde se represente en el eje Y la probabilidad de encontrar **dos o más contagiados** en función del número de personas dado por el eje X
+
+```{r}
+#Cualquiera de las dos líneas que vienen a continuación dan el mismo resultado.
+# pbinom : Da la probabilidad acumulada 
+# dbinom : Da la probabilidad para el valor de interés. pbinom(q=1,size=x,prob=p) es igual a dbinom(x=0,size=x,prob=p)+dbinom(x=1,size=x,prob=p) 
+#prb<-1-pbinom(q=1,size=x,prob=p)
+prb<-1-(dbinom(x=0,size=x,prob=p)+dbinom(x=1,size=x,prob=p))
+plot(x,prb,xlab="Numero personas",ylab="Probabilidad")
+
+```
+
+# Origen de la vida
+
+Datos basados en:
+* [Life Before Earth](https://arxiv.org/pdf/1304.3381.pdf)
+* [Genome increase as a clock for the origin and evolution of life](https://biologydirect.biomedcentral.com/track/pdf/10.1186/1745-6150-1-17?site=biologydirect.biomedcentral.com)
+* Más información: [Kurgesagt](https://www.youtube.com/watch?v=JOiGEI9pQBs)
+
+
+La siguiente tabla muestra la complejidad de ADN, eliminando las redundancias, de diferentes grupos de animales y su aparición en la tierra:
+
+| especies | genoma completo | genoma sin redundancia | aparición |
+| - | - | - | - |
+| mamíferos | $3.2 · 10^9$pb | $4.8 · 10^8$pb | 125 ma |
+| peces     | $4.8 · 10^8$pb | $1.6 · 10^8$pb | 500 ma |
+| gusanos   | $9.7 · 10^7$pb | $7.2 · 10^7$pb | 1000ma |
+| eucariotas| $2.9 · 10^6$pb | $2.9 · 10^6$pb | 2100ma |
+| procariotas|$5 · 10^5$pb   | $5 · 10^5$pb   | 3500ma |
+
+
+Las columnas significan:
+* especies: especies de animales.
+* genoma completo: Longitud del genoma de una especie medido en pares de bases de ADN.
+* genoma completo: Longitud del genoma de una especie, eliminando la redundancia, medido en pares de bases de ADN.
+* aparición: Cuando ese conjunto de especies aparecieron.
+
+Con estos datos tratar de obtener una regresión que indique cuando apareció un organismo con solo 1 par de bases genéticas. Esto podría marcar el origen de la vida.
+
+¿Qué columna habría que coger para hacer la regresión la del genoma completo o el que elimina la redundancia?
+
+Ayuda: Es mejor usar escalas logarítmicas.
+
+```{r}
+df<-data.frame(especie=c("mamíferos","peces","gusanos","eucariotas","procariotas"),
+           gen_total=c(3.2e9,4.8e8,9.7e7,2.9e6,5e5),
+          gen_reduc=c(4.8e8,1.6e8,7.2e7,2.9e6,5e5),
+          aparicion=c(-125,-500,-1000,-2100,-3550))
+```
+
+```{r}
+library(ggplot2)
+library(reshape2)
+
+dfm<-melt(df,id=c("especie","aparicion"))
+ggplot(data=dfm,aes(x=aparicion,y=value))+geom_point(aes(shape=variable,color=variable))+theme_bw()
+```
+
+```{r}
+dflog<-df
+dflog[,2:3]<- log10(dflog[,2:3])
+#dflog[,4]<- -log10(-dflog[,4])
+dflog
+
+dfm<-melt(dflog,id=c("especie","aparicion"))
+
+
+ggplot(data=dfm,aes(x=aparicion,y=value))+geom_point(aes(shape=variable,color=variable))+theme_bw()
+```
+
+```{r}
+model_total <- lm(data = dflog, formula=gen_total~aparicion )
+summary(model_total)
+model_reduc <- lm(data = dflog, formula=gen_reduc~aparicion )
+summary(model_reduc)
+```
+
+Nos quedamos con el modelo `model_reduc` al tener un MSE más bajo y un R² más alto:
+```{r}
+ggplot(data=dfm,aes(x=aparicion,y=value))+geom_point(aes(shape=variable,color=variable))+
+  geom_abline(intercept = model_reduc$coefficients[1], slope=model_reduc$coefficients[2])+
+  theme_bw()+
+  ylim(c(0,9))+
+  scale_x_continuous(breaks = seq(-10e3,0, by=1000), limits = c(-10e3,0))
+```
+
+
+
+## Gasto en calefacción
+
+El siguiente es el gasto en calefacción en mi comunidad. Las unidades es el valor que se ha monitorizado a todos los vecinos. El gasto total:
+
+| Fecha	| Gastos| Unidades | 
+|-|-|-|
+| 2019-05-07| 2230.8| 5740.57| 
+| 2019-04-04| 2672.8| 7964.7| 
+| 2019-03-04| 3196.22| 12743.42| 
+| 2019-02-04| 4325.23| 19574.43| 
+| 2019-01-03| 3901.45| 16890.89| 
+| 2018-12-03| 3494.24| 17322.95| 
+
+```{r}
+consumo<-data.frame(
+    date=as.Date(c('2019-05-07','2019-04-04','2019-03-04','2019-02-04','2019-01-03','2018-12-03')),
+    gastos=c(2230.8,2672.8,3196.22,4325.23,3901.45,3494.24),
+    unidades=c(5740.57,7964.7,12743.42,19574.43,16890.89,17322.95))
+consumo
+```
+
+Calcular una relación entre el gasto y las unidades consumidas.
+
+
+```{r}
+ggplot(consumo, aes(x=unidades, y=gastos))+geom_point()+
+  geom_smooth(method='lm')
+```
+
+
+
+
+```{r}
+model <- lm(consumo, formula=gastos~unidades)
+summary(model)
+```
+
+
+Cada unidad de calor cuesta:
+```{r}
+model$coefficients[2]
+```
+El gasto mínimo que habría entre vecinos es. 
+```{r}
+model$coefficients[1]
+```
+Sería el gasto, si todas las unidades marcaran 0. 

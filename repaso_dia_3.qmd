@@ -1,0 +1,77 @@
+---
+title: "Repaso_dia3"
+format: html
+editor: visual
+---
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+
+*Cargamos el fichero
+```{r}
+df <- read.csv('data/peso_altura.csv')
+```
+
+Comprobamos como es la calidad del dato. Mirando los estimadores basicos:
+```{r}
+summary(df)
+```
+
+Vamos a buscar el outlier en la altura:
+
+```{r}
+
+#ggplot(df, aes(altura))+geom_histogram()
+ggplot(df, aes(y=altura))+geom_boxplot()
+```
+
+Vamos a buscar todas las filas que tengan una altura superior a 2 metros:
+```{r}
+#df[df$altura>2, ]
+df |> filter(altura>2) #Con la libreria dplyr
+``` 
+
+
+```{r}
+altura_real <- df[df$altura>2, 'peso']
+df[df$altura>2, 'peso'] <- df[df$altura>2, 'altura']
+df[df$altura>2, 'altura'] <- altura_real
+``` 
+
+
+### Peso:
+
+*Calcular media, mediana y desviación tipica
+```{r}
+paste("La media es", mean(df$peso))
+paste("La mediana es", median(df$peso))
+paste("La desviación tipica es", sd(df$peso))
+```
+
+
+##### Histograma 
+
+```{r}
+ggplot(df, aes(peso))+geom_histogram(bins=5, color='blue', fill='darkblue')+
+  geom_boxplot(color='red', width=1, alpha=0.5)
+```
+
+### Altura
+
+*Calcular media, mediana y desviación tipica
+```{r}
+paste("La media es", mean(df$altura))
+paste("La mediana es", median(df$altura))
+paste("La desviación tipica es", sd(df$altura))
+```
+
+
+##### Histograma 
+
+```{r}
+ggplot(df, aes(altura))+geom_histogram(bins=5, color='blue', fill='darkblue')+
+  geom_boxplot(color='red', width=1, alpha=0.5)
+```
